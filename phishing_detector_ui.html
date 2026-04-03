@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PhishGuard — Email Phishing Detector</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Syne:wght@400;600;800&display=swap');
+
+  :root {
+    --bg: #0a0c10;
+    --surface: #111318;
+    --surface2: #181c24;
+    --border: rgba(255,255,255,0.07);
+    --border-accent: rgba(255,255,255,0.13);
+    --text: #e8eaf0;
+    --muted: #7a8099;
+    --green: #22d87a;
+    --green-dim: rgba(34,216,122,0.12);
+    --red: #ff4a6b;
+    --red-dim: rgba(255,74,107,0.12);
+    --amber: #ffb340;
+    --amber-dim: rgba(255,179,64,0.1);
+    --blue: #4fa3ff;
+    --blue-dim: rgba(79,163,255,0.1);
+    --mono: 'JetBrains Mono', monospace;
+    --display: 'Syne', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--display);
+    min-height: 100vh;
+    padding: 2rem 1rem 4rem;
+  }
+
+  .grid-bg {
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  .wrap { max-width: 760px; margin: 0 auto; position: relative; z-index: 1; }
+
+  header { text-align: center; margin-bottom: 3rem; }
+  .logo {
+    display: inline-flex; align-items: center; gap: 10px;
+    margin-bottom: 1.5rem;
+  }
+  .logo-icon {
+    width: 40px; height: 40px;
+    background: var(--red-dim);
+    border: 1px solid var(--red);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+  }
+  .logo-text { font-size: 1.4rem; font-weight: 800; letter-spacing: -0.02em; }
+  .logo-text span { color: var(--red); }
+  h1 { font-size: clamp(2rem, 5vw, 3rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 0.75rem; }
+  .subtitle { color: var(--muted); font-size: 1rem; font-family: var(--mono); }
+
+  /* Upload zone */
+  .upload-zone {
+    border: 1.5px dashed var(--border-accent);
+    border-radius: 16px;
+    padding: 3rem 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--surface);
+    margin-bottom: 1.5rem;
+    position: relative;
+  }
+  .upload-zone:hover, .upload-zone.drag { border-color: var(--blue); background: var(--blue-dim); }
+  .upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+  .upload-icon { font-size: 2.5rem; margin-bottom: 1rem; display: block; }
+  .upload-label { font-size: 1rem; font-weight: 600; margin-bottom: 0.4rem; }
+  .upload-hint { font-size: 0.8rem; color: var(--muted); font-family: var(--mono); }
+
+  /* Textarea */
+  .or-divider {
+    display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;
+    color: var(--muted); font-size: 0.8rem; font-family: var(--mono);
+  }
+  .or-divider::before, .or-divider::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+
+  textarea {
+    width: 100%; background: var(--surface); border: 1px solid var(--border-accent);
+    border-radius: 12px; color: var(--text); font-family: var(--mono);
+    font-size: 0.82rem; padding: 1.25rem; resize: vertical; min-height: 180px;
+    line-height: 1.6; outline: none; transition: border-color 0.2s;
+    margin-bottom: 1.5rem;
+  }
+  textarea:focus { border-color: var(--blue); }
+  textarea::placeholder { color: var(--muted); }
+
+  .analyze-btn {
+    width: 100%; padding: 1rem; font-family: var(--display); font-size: 1rem;
+    font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
+    background: var(--red); color: #fff; border: none; border-radius: 10px;
+    cursor: pointer; transition: all 0.2s; margin-bottom: 2.5rem;
+  }
+  .analyze-btn:hover { background: #ff2055; transform: translateY(-1px); }
+  .analyze-btn:active { transform: translateY(0); }
+  .analyze-btn:disabled { background: var(--surface2); color: var(--muted); cursor: not-allowed; transform: none; }
+
+  /* Results */
+  #results { display: none; }
+
+  .verdict-card {
+    border-radius: 16px; padding: 1.75rem; margin-bottom: 1.5rem;
+    border: 1px solid var(--border-accent); background: var(--surface);
+    display: flex; align-items: center; gap: 1.5rem;
+  }
+  .verdict-icon { font-size: 2.5rem; flex-shrink: 0; }
+  .verdict-label { font-size: 0.7rem; font-family: var(--mono); letter-spacing: 0.12em; margin-bottom: 0.3rem; }
+  .verdict-text { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.02em; }
+  .verdict-score { font-size: 0.8rem; font-family: var(--mono); color: var(--muted); margin-top: 0.3rem; }
+
+  .verdict-HIGH .verdict-card { border-color: var(--red); background: var(--red-dim); }
+  .verdict-HIGH .verdict-text { color: var(--red); }
+  .verdict-MEDIUM .verdict-card { border-color: var(--amber); background: var(--amber-dim); }
+  .verdict-MEDIUM .verdict-text { color: var(--amber); }
+  .verdict-LOW .verdict-card { border-color: var(--amber); background: var(--amber-dim); }
+  .verdict-LOW .verdict-text { color: var(--amber); }
+  .verdict-NONE .verdict-card { border-color: var(--green); background: var(--green-dim); }
+  .verdict-NONE .verdict-text { color: var(--green); }
+
+  /* Indicator sections */
+  .section { margin-bottom: 1.25rem; border-radius: 12px; overflow: hidden; border: 1px solid var(--border-accent); }
+  .section-header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 0.9rem 1.25rem; background: var(--surface2);
+    font-size: 0.85rem; font-weight: 600;
+    cursor: pointer; user-select: none;
+  }
+  .section-header:hover { background: var(--surface); }
+  .section-tag {
+    font-family: var(--mono); font-size: 0.7rem; padding: 2px 8px;
+    border-radius: 100px; margin-left: auto; font-weight: 400;
+  }
+  .tag-danger { background: var(--red-dim); color: var(--red); border: 1px solid var(--red); }
+  .tag-warning { background: var(--amber-dim); color: var(--amber); border: 1px solid var(--amber); }
+  .tag-safe { background: var(--green-dim); color: var(--green); border: 1px solid var(--green); }
+  .section-body { padding: 1rem 1.25rem; background: var(--surface); }
+  .section-body.hidden { display: none; }
+
+  .finding {
+    padding: 0.75rem; border-radius: 8px; margin-bottom: 0.6rem;
+    border: 1px solid var(--border); background: var(--surface2);
+  }
+  .finding:last-child { margin-bottom: 0; }
+  .finding-url { font-family: var(--mono); font-size: 0.75rem; color: var(--blue); margin-bottom: 6px; word-break: break-all; }
+  .finding-header { font-family: var(--mono); font-size: 0.75rem; color: var(--amber); margin-bottom: 6px; word-break: break-all; }
+  .reason { display: flex; align-items: flex-start; gap: 6px; font-size: 0.8rem; color: var(--muted); margin-top: 4px; }
+  .reason::before { content: '›'; color: var(--red); flex-shrink: 0; }
+
+  .phrase-list { display: flex; flex-wrap: wrap; gap: 6px; }
+  .phrase-chip {
+    font-family: var(--mono); font-size: 0.72rem; padding: 4px 10px;
+    border-radius: 6px; background: var(--red-dim); color: var(--red);
+    border: 1px solid rgba(255,74,107,0.3);
+  }
+
+  .safe-msg { font-size: 0.85rem; color: var(--green); font-family: var(--mono); }
+
+  .chevron { margin-left: auto; transition: transform 0.2s; font-style: normal; }
+  .section-header.open .chevron { transform: rotate(180deg); }
+
+  .scan-again-btn {
+    margin-top: 1.5rem; background: transparent; border: 1px solid var(--border-accent);
+    color: var(--muted); padding: 0.75rem 1.5rem; border-radius: 8px; cursor: pointer;
+    font-family: var(--mono); font-size: 0.8rem; transition: all 0.2s; width: 100%;
+  }
+  .scan-again-btn:hover { border-color: var(--text); color: var(--text); }
+
+  .progress-bar {
+    height: 3px; width: 100%; background: var(--surface2); border-radius: 2px;
+    overflow: hidden; margin-bottom: 1.5rem; display: none;
+  }
+  .progress-fill {
+    height: 100%; width: 0; background: var(--red);
+    animation: progress 0.9s ease-in-out forwards;
+  }
+  @keyframes progress { to { width: 100%; } }
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+<div class="wrap">
+  <header>
+    <div class="logo">
+      <div class="logo-icon">🛡</div>
+      <div class="logo-text">Phish<span>Guard</span></div>
+    </div>
+    <h1>Detect Phishing<br>Before It Strikes</h1>
+    <p class="subtitle">// paste email content or upload a .txt file</p>
+  </header>
+
+  <div id="input-section">
+    <div class="upload-zone" id="drop-zone">
+      <input type="file" id="file-input" accept=".txt,.eml,.msg">
+      <span class="upload-icon">📂</span>
+      <div class="upload-label">Drop email file here</div>
+      <div class="upload-hint">.txt / .eml accepted</div>
+    </div>
+
+    <div class="or-divider">or paste email content</div>
+
+    <textarea id="email-text" placeholder="From: security-noreply@paypa1-secure.xyz
+Subject: URGENT: Your account is suspended
+
+Dear Customer,
+
+Your PayPal account has been limited. You must verify your account immediately..."></textarea>
+
+    <button class="analyze-btn" id="analyze-btn" onclick="analyze()">
+      🔍 &nbsp; Analyze Email
+    </button>
+  </div>
+
+  <div class="progress-bar" id="progress-bar">
+    <div class="progress-fill"></div>
+  </div>
+
+  <div id="results"></div>
+</div>
+
+<script>
+const URGENT_WORDS = [
+  "urgent","immediately","action required","act now","right away",
+  "verify now","confirm now","suspended","limited time","expires soon",
+  "final notice","last chance","critical","warning","alert",
+  "your account will be","account compromised","unauthorized access",
+  "click here now","respond immediately","failure to respond",
+  "within 24 hours","within 48 hours","as soon as possible"
+];
+
+const SUSPICIOUS_TLDS = [
+  ".xyz",".top",".club",".click",".link",".online",".site",
+  ".tk",".ml",".ga",".cf",".gq",".pw",".cc"
+];
+
+const BRANDS = [
+  "paypal","amazon","google","microsoft","apple","facebook",
+  "instagram","netflix","bank","chase","wellsfargo","citibank",
+  "irs","fedex","ups","dhl","usps","ebay"
+];
+
+const LOOKALIKES = [
+  [/pay[-_.]?pal/i,'PayPal'],
+  [/amaz[o0]n/i,'Amazon'],
+  [/g[o0]{2}gle/i,'Google'],
+  [/micr[o0]s[o0]ft/i,'Microsoft'],
+  [/app1e|appl[e3]/i,'Apple'],
+  [/faceb[o0]{2}k/i,'Facebook'],
+  [/netfl[i1]x/i,'Netflix'],
+  [/[i1]rs\./i,'IRS']
+];
+
+const SHORTENERS = ['bit.ly','tinyurl.com','t.co','goo.gl','ow.ly','buff.ly','is.gd','rebrand.ly','short.link'];
+
+const CRED_PATTERNS = [
+  [/(enter|provide|confirm|update|verify)\s+your\s+(password|pin|ssn|social security)/i,"Requests password / PIN / SSN"],
+  [/credit card|card number|cvv|expiry date/i,"References credit card details"],
+  [/bank\s+account|routing\s+number|account\s+number/i,"Requests bank account details"],
+  [/social\s+security|taxpayer\s+id/i,"Requests Social Security / Tax ID"]
+];
+
+function extractURLs(text){
+  return [...text.matchAll(/https?:\/\/[^\s<>"']+|www\.[^\s<>"']+/g)].map(m=>m[0]);
+}
+
+function getHost(url){
+  try { return new URL(url.startsWith('http')?url:'http://'+url).hostname; } catch(e){ return ''; }
+}
+
+function checkLinks(text){
+  const findings=[];
+  for(const url of extractURLs(text)){
+    const host=getHost(url); if(!host) continue;
+    const reasons=[];
+    if(/^\d{1,3}(\.\d{1,3}){3}$/.test(host)) reasons.push("IP address used instead of domain name");
+    for(const tld of SUSPICIOUS_TLDS) if(host.endsWith(tld)) reasons.push(`Suspicious TLD: ${tld}`);
+    const parts=host.split('.');
+    if(parts.length>2){ const sub=parts.slice(0,-2).join('.').toLowerCase(); for(const b of BRANDS) if(sub.includes(b)) reasons.push(`Brand '${b}' in subdomain (spoofing)`); }
+    const dc=host.replace(/[-_]/g,'');
+    for(const [pat,brand] of LOOKALIKES) if(pat.test(dc)&&!host.toLowerCase().split('.').includes(brand.toLowerCase())) reasons.push(`Lookalike domain impersonating ${brand}`);
+    for(const s of SHORTENERS) if(host.includes(s)) reasons.push("URL shortener detected (hides real destination)");
+    if((url.match(/%/g)||[]).length>3) reasons.push("Heavily encoded URL (possible obfuscation)");
+    if(reasons.length) findings.push({url:url.length>80?url.slice(0,80)+'…':url,reasons});
+  }
+  return findings;
+}
+
+function checkUrgent(text){
+  const lo=text.toLowerCase(); return URGENT_WORDS.filter(p=>lo.includes(p));
+}
+
+function checkSender(text){
+  const findings=[];
+  for(const m of text.matchAll(/(?:From|Reply-To)\s*:\s*(.+)/gi)){
+    const header=m[1]; const issues=[];
+    const em=header.match(/[\w.+-]+@([\w.-]+)/); if(!em) continue;
+    const domain=em[1].toLowerCase();
+    const dc=domain.replace(/[-_]/g,'');
+    for(const [pat,brand] of LOOKALIKES) if(pat.test(dc)) issues.push(`Sender domain may impersonate ${brand}`);
+    if((domain.match(/-/g)||[]).length>=2) issues.push("Domain contains multiple hyphens (suspicious)");
+    const dispEnd=header.lastIndexOf('<'); const disp=dispEnd>0?header.slice(0,dispEnd).toLowerCase():'';
+    for(const b of BRANDS) if(disp.includes(b)&&!domain.includes(b)){ issues.push(`Display name mentions '${b}' but domain doesn't match`); break; }
+    if(issues.length) findings.push({header:header.trim(),issues});
+  }
+  return findings;
+}
+
+function checkGreeting(text){ return /\b(dear\s+(customer|user|member|account holder|sir|madam|valued customer))\b/i.test(text); }
+function checkCreds(text){ return CRED_PATTERNS.filter(([p])=>p.test(text)).map(([,l])=>l); }
+
+function calcRisk(r){
+  let s=0;
+  s+=r.links.length*3; s+=r.urgent.length*1; s+=r.senders.length*4;
+  s+=r.greeting?2:0; s+=r.creds.length*3;
+  if(s>=8) return['HIGH',s]; if(s>=4) return['MEDIUM',s]; if(s>=1) return['LOW',s]; return['NONE',s];
+}
+
+function toggleSection(el){
+  const hdr=el.closest('.section-header');
+  hdr.classList.toggle('open');
+  el.closest('.section').querySelector('.section-body').classList.toggle('hidden');
+}
+
+function renderResults(r){
+  const [risk,score]=calcRisk(r);
+  const verdictMap={
+    HIGH:{emoji:'⚠',text:'Likely Phishing',hint:'High risk — do not click links or reply.'},
+    MEDIUM:{emoji:'⚠',text:'Possibly Phishing',hint:'Moderate risk — exercise caution.'},
+    LOW:{emoji:'🔍',text:'Suspicious',hint:'Some red flags detected.'},
+    NONE:{emoji:'✅',text:'Likely Safe',hint:'No phishing indicators found.'}
+  };
+  const v=verdictMap[risk];
+
+  let html=`<div class="verdict-${risk}">
+    <div class="verdict-card">
+      <div class="verdict-icon">${v.emoji}</div>
+      <div>
+        <div class="verdict-label">VERDICT</div>
+        <div class="verdict-text">${v.text}</div>
+        <div class="verdict-score">${v.hint} &nbsp;·&nbsp; risk score: ${score}</div>
+      </div>
+    </div>
+  </div>`;
+
+  // Links
+  html+=section('🔗','Suspicious Links',r.links.length,
+    r.links.length?r.links.map(l=>`<div class="finding"><div class="finding-url">${l.url}</div>${l.reasons.map(r=>`<div class="reason">${r}</div>`).join('')}</div>`).join('')
+    :`<div class="safe-msg">✓ No suspicious links detected</div>`);
+
+  // Urgent
+  html+=section('🚨','Urgent Language',r.urgent.length,
+    r.urgent.length?`<div class="phrase-list">${r.urgent.map(p=>`<span class="phrase-chip">${p}</span>`).join('')}</div>`
+    :`<div class="safe-msg">✓ No urgent language detected</div>`);
+
+  // Senders
+  html+=section('📧','Spoofed Sender',r.senders.length,
+    r.senders.length?r.senders.map(s=>`<div class="finding"><div class="finding-header">${s.header}</div>${s.issues.map(i=>`<div class="reason">${i}</div>`).join('')}</div>`).join('')
+    :`<div class="safe-msg">✓ No sender spoofing detected</div>`);
+
+  // Creds
+  html+=section('🔑','Credential Harvesting',r.creds.length,
+    r.creds.length?`<div class="phrase-list">${r.creds.map(c=>`<span class="phrase-chip">${c}</span>`).join('')}</div>`
+    :`<div class="safe-msg">✓ No credential requests detected</div>`);
+
+  // Greeting
+  if(r.greeting) html+=`<div class="section"><div class="section-header open" onclick="toggleSection(this)">👋 Generic Greeting Detected <em class="chevron">▾</em></div><div class="section-body"><p style="font-size:0.85rem;color:var(--muted)">The email uses a generic greeting (e.g. "Dear Customer") instead of your name — a common phishing tactic.</p></div></div>`;
+
+  html+=`<button class="scan-again-btn" onclick="reset()">↩ &nbsp; Scan another email</button>`;
+  return html;
+}
+
+function section(icon,title,count,body){
+  const tagClass=count>0?'tag-danger':'tag-safe';
+  const tagText=count>0?`${count} found`:'clear';
+  return `<div class="section">
+    <div class="section-header open" onclick="toggleSection(this)">
+      ${icon} &nbsp;${title}
+      <span class="section-tag ${tagClass}">${tagText}</span>
+      <em class="chevron" style="margin-left:8px">▾</em>
+    </div>
+    <div class="section-body">${body}</div>
+  </div>`;
+}
+
+function analyze(){
+  const text=document.getElementById('email-text').value.trim();
+  if(!text){ alert('Please paste email content or upload a file first.'); return; }
+  document.getElementById('analyze-btn').disabled=true;
+  const pb=document.getElementById('progress-bar');
+  pb.style.display='block';
+  pb.innerHTML='<div class="progress-fill"></div>';
+
+  setTimeout(()=>{
+    const r={
+      links:checkLinks(text),
+      urgent:checkUrgent(text),
+      senders:checkSender(text),
+      greeting:checkGreeting(text),
+      creds:checkCreds(text)
+    };
+    pb.style.display='none';
+    document.getElementById('input-section').style.display='none';
+    const res=document.getElementById('results');
+    res.style.display='block';
+    res.innerHTML=renderResults(r);
+  }, 900);
+}
+
+function reset(){
+  document.getElementById('input-section').style.display='block';
+  document.getElementById('results').style.display='none';
+  document.getElementById('results').innerHTML='';
+  document.getElementById('analyze-btn').disabled=false;
+  document.getElementById('email-text').value='';
+}
+
+// File upload
+const dz=document.getElementById('drop-zone');
+const fi=document.getElementById('file-input');
+fi.addEventListener('change',e=>loadFile(e.target.files[0]));
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('drag'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag');loadFile(e.dataTransfer.files[0]);});
+
+function loadFile(f){
+  if(!f) return;
+  const r=new FileReader();
+  r.onload=e=>{ document.getElementById('email-text').value=e.target.result; };
+  r.readAsText(f);
+}
+</script>
+</body>
+</html>
