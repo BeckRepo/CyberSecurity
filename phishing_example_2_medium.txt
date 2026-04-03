@@ -1,0 +1,19 @@
+From: Google Accounts <no-reply@g00gle-accounts.com>
+To: user@email.com
+Subject: Your Google Account - Sign-in Attempt Detected
+
+Hi there,
+
+We noticed a sign-in attempt to your Google Account from a new device. If this was you, no action is needed.
+
+If you do not recognize this activity, your account may be compromised. Please verify your account immediately using the link below:
+
+https://accounts.g00gle-accounts.com/verify
+
+You have 48 hours to confirm your identity or your account access will be restricted.
+
+If you did not request this, click here to secure your account:
+https://tinyurl.com/ggl-secure-99
+
+Thanks,
+The Google Accounts Team

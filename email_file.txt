@@ -1,0 +1,27 @@
+From: PayPal Security <security@paypa1-secure.xyz>
+Reply-To: noreply@paypal-verify-account.top
+To: customer@gmail.com
+Subject: URGENT: Your account has been suspended!
+
+Dear Customer,
+
+We have detected unauthorized access to your PayPal account. You must verify your account immediately to avoid permanent suspension.
+
+Action Required: Your account will be permanently closed within 24 hours if you do not confirm your details.
+
+Please click the link below to verify your account now:
+http://192.168.1.105/paypal-secure-login
+https://paypal-account-verify.xyz/login?ref=9A2X%2F%2Fstep%2F1
+https://bit.ly/3phlsh0
+
+As soon as possible, provide the following details to confirm your identity:
+- Credit card number and CVV
+- Bank account and routing number
+- Social Security Number
+
+Failure to respond will result in account closure.
+
+This is your final notice. Act now to avoid further action.
+
+PayPal Security Team
+EOF

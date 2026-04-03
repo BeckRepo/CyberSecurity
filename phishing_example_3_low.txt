@@ -1,0 +1,16 @@
+From: Netflix Support <support@netfl1x-help.co>
+To: member@email.com
+Subject: Your Netflix membership - billing update required
+
+Hi,
+
+We were unable to process your most recent payment. To keep your membership active, please update your billing information at your earliest convenience.
+
+Update your details here:
+https://www.netfl1x-help.co/account/billing
+
+If your payment is not updated soon your account may be paused.
+
+Thanks for being a member.
+
+Netflix Support
